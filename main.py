@@ -1,14 +1,22 @@
+import os
 import pandas as pd
 from fastapi import FastAPI
 from sqlalchemy import create_engine
 from prophet import Prophet
 import scoring_engine  # This imports the file you just made!
 from sqlalchemy import text # Make sure this is imported at the top
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI()
 
-# Database Connection (Same as before)
-db_str = 'postgresql://neondb_owner:npg_aj5kWuP9LoCe@ep-calm-thunder-a1tgpch5-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+# Database Connection (from environment variable)
+# !!pip install python-dotenv!!
+db_str = os.getenv('DATABASE_URL')
+if not db_str:
+    raise ValueError("DATABASE_URL environment variable is not set")
 engine = create_engine(db_str)
 
 
