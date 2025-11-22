@@ -1,0 +1,62 @@
+
+//get /suggest-orders-smart - suggestive Ai decision on how many cacao do you need and what supplier to call
+{
+    "status": "success",
+    "message": "Supplier scores updated and fetched.",
+    "data": [
+        {
+            "supplier_id": "SUP-DVO-001",
+            "name": "Davao Golden Cacao Coop",
+            "location": {
+                "city": "Davao City",
+                "region": "Region XI",
+                "barangay": "Wangan",
+                "district": "Calinan"
+            },
+            "ai_reliability_score": 60,
+            "farm_profile": {
+                "soil_type": "loamy",
+                "bearing_trees": 2000,
+                "total_hectares": 5.0,
+                "elevation_meters": 450,
+                "annual_rainfall_mm": 1800
+            },
+            "compliance_status": {
+                "philgap_id": "BPI-2023-11",
+                "philgap_certified": true
+            }
+        },
+        {
+            "supplier_id": "SUP-DVO-099",
+            "name": "Baguio District Aggregators",
+            "location": {
+                "city": "Davao City",
+                "region": "Region XI",
+                "barangay": "Tawan-Tawan",
+                "district": "Baguio"
+            },
+            "ai_reliability_score": 54,
+            "farm_profile": {
+                "soil_type": "loamy",
+                "bearing_trees": 500,
+                "total_hectares": 2.0,
+                "elevation_meters": 450,
+                "annual_rainfall_mm": 1800
+            },
+            "compliance_status": {
+                "philgap_certified": false
+            }
+        }
+    ]
+}
+
+//. post /update-scores - updating the score of suppliers and rank them
+{
+    "status": "HEALTHY",
+    "message": "No orders needed. Projected surplus is sufficient.",
+    "analysis": {
+        "current_storage": 52982,
+        "projected_end_stock": 54054,
+        "predicted_deficit_if_empty_now": -1072
+    }
+}
