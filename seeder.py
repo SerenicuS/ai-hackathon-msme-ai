@@ -5,65 +5,13 @@ from datetime import datetime, timedelta
 import json
 
 # CONNECT TO DATABASE
-# UPDATED: Pointing to 'ai_hackathon_test'
 db_str = 'postgresql://neondb_owner:npg_aj5kWuP9LoCe@ep-calm-thunder-a1tgpch5-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 engine = create_engine(db_str)
 
 
 def generate_fake_data():
     # ==========================================
-    # STEP 0: CLEANUP
-    # ==========================================
-    print("⚠️ Forcing clean schema reset...")
-    with engine.connect() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS production_logs CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS transactions CASCADE;"))
-        conn.execute(text("DROP TABLE IF EXISTS suppliers CASCADE;"))
-        conn.commit()
-    print("✅ Tables dropped.")
-
-    # ==========================================
-    # STEP 0B: SCHEMA RECREATION (UPDATED)
-    # ==========================================
-    print("🔨 Recreating database schema...")
-    with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE suppliers (
-                supplier_id VARCHAR(50) PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                location TEXT NOT NULL,
-                eligibility JSONB,
-                description JSONB,
-                reliability_score INT DEFAULT 0
-            );
-        """))
-        conn.execute(text("""
-            CREATE TABLE transactions (
-                transaction_id VARCHAR(50) PRIMARY KEY,
-                supplier_id VARCHAR(50) NOT NULL,
-                amount INT NOT NULL,
-                price NUMERIC(10, 2) NOT NULL,
-                date TIMESTAMP NOT NULL DEFAULT NOW(),
-                quality JSONB,
-                status VARCHAR(50) NOT NULL,
-                FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE CASCADE
-            );
-        """))
-        conn.execute(text("""
-            CREATE TABLE production_logs (
-                log_id VARCHAR(50) PRIMARY KEY,
-                date TIMESTAMP NOT NULL DEFAULT NOW(),
-                product_type VARCHAR(100) NOT NULL,
-                quantity INT NOT NULL,
-                supplier_id VARCHAR(50) NOT NULL,
-                FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE CASCADE
-            );
-        """))
-        conn.commit()
-    print("✅ Schema recreated successfully.")
-
-    # ==========================================
-    # PART 1: CREATE SUPPLIERS (UPDATED FIELDS)
+    # PART 1: CREATE SUPPLIERS
     # ==========================================
     suppliers = [
         {
@@ -115,7 +63,7 @@ def generate_fake_data():
     print("✅ Suppliers added/updated.")
 
     # ==========================================
-    # PART 2: CREATE TRANSACTIONS (UPDATED FIELDS)
+    # PART 2: CREATE TRANSACTIONS
     # ==========================================
     transactions = []
     start_date = datetime.now() - timedelta(days=180)
@@ -166,7 +114,7 @@ def generate_fake_data():
     print(f"✅ Successfully added {txn_count} transactions!")
 
     # ==========================================
-    # PART 3: CREATE PRODUCTION LOGS (UPDATED FIELDS)
+    # PART 3: CREATE PRODUCTION LOGS
     # ==========================================
     production_logs = []
     current_sim_date = start_date
@@ -201,7 +149,7 @@ def generate_fake_data():
 
     print(f"✅ Successfully added {log_count} production logs.")
     engine.dispose()
-    print("✅ Database connection disposed, ready for fresh AI run.")
+    print("✅ Data insertion complete!")
 
 if __name__ == "__main__":
     generate_fake_data()
