@@ -165,7 +165,7 @@ def suggest_orders_smart():
                 "analysis": {
                     "current_storage": int(current_stock_kg),
                     "projected_end_stock": int(projected_balance),
-                    "predicted_deficit_if_empty_now": int(predicted_outflow - predicted_inflow)
+                    "required_purchase_kg": 0
                 }
             }
 
@@ -190,7 +190,7 @@ def suggest_orders_smart():
                     "rank_score": s['reliability_score'],
                     "suggested_order_kg": int(order_per_supplier),
                     "reason": "Top performer selected to mitigate projected stock shortage."
-                })
+                      })
 
         return {
             "status": "CRITICAL_ORDERING_REQUIRED",
