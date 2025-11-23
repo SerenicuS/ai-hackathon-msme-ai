@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from prophet import Prophet
 import scoring_engine  # This imports the file you just made!
-from sqlalchemy import text # Make sure this is imported at the top
+from sqlalchemy import text  # Make sure this is imported at the top
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -38,12 +38,13 @@ def trigger_scoring_logic():
 
         # STEP 2: Immediately query the fresh data
         # We want the list sorted by Score (Highest first)
+        # 🟢 FIX: Replaced non-existent 'compliance_status' with 'eligibility'
         query = """
-        SELECT supplier_id, name, location, ai_reliability_score, 
-               farm_profile, compliance_status
-        FROM supplier_profiles 
-        ORDER BY ai_reliability_score DESC
-        """
+            SELECT supplier_id, name, location, reliability_score, 
+                   description  , eligibility
+            FROM suppliers
+            ORDER BY reliability_score DESC
+            """
 
         # Read into Pandas
         df = pd.read_sql(query, engine)
@@ -61,6 +62,7 @@ def trigger_scoring_logic():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+
 # =========================================================
 # PART 2: THE AI (Smart Demand Forecasting)
 # =========================================================
@@ -74,10 +76,10 @@ def predict_demand():
         # 1. FETCH DATA: Get historical consumption (date + weight)
         # Prophet STRICTLY requires columns named 'ds' (date) and 'y' (value)
         query = """
-        SELECT date as ds, net_weight_kg as y 
-        FROM transactions 
-        ORDER BY date
-        """
+            SELECT date as ds, net_weight_kg as y 
+            FROM transactions 
+            ORDER BY date
+            """
         df = pd.read_sql(query, engine)
 
         # Safety Check: AI needs at least 2 data points to work
@@ -126,33 +128,34 @@ def suggest_orders_smart():
 
         # --- STEP 2: PREDICT FUTURE FLOW (Separate models for I/O) ---
 
-        # 2a. Supply Forecast (What the farmers will deliver)
+        # 2a. Supply Forecast
         df_supply = pd.read_sql("SELECT date as ds, amount as y FROM transactions", engine)
-        m_supply = Prophet().fit(df_supply)
-        future_supply = m_supply.predict(m_supply.make_future_dataframe(periods=30))
+        if len(df_supply) >= 2:
+            m_supply = Prophet().fit(df_supply)
+            future_supply = m_supply.predict(m_supply.make_future_dataframe(periods=30))
+            # FIX 1: Use max(0, ...) to prevent negative predictions
+            predicted_inflow = max(0.0, float(future_supply.tail(30)['yhat'].sum()))
+        else:
+            predicted_inflow = 0.0
 
-        # FIX: Assign INFLOW. Must cast Prophet/Pandas sum to float() for compatibility with current_stock_kg
-        predicted_inflow = float(future_supply.tail(30)['yhat'].sum())
-
-        # 2b. Demand Forecast (What the factory will use)
+        # 2b. Demand Forecast
         df_demand = pd.read_sql("SELECT date as ds, quantity as y FROM production_logs", engine)
-        m_demand = Prophet().fit(df_demand)
-        future_demand = m_demand.predict(m_demand.make_future_dataframe(periods=30))
-
-        # FIX: Assign OUTFLOW. Must cast Prophet/Pandas sum to float()
-        predicted_outflow = float(future_demand.tail(30)['yhat'].sum())
+        if len(df_demand) >= 2:
+            m_demand = Prophet().fit(df_demand)
+            future_demand = m_demand.predict(m_demand.make_future_dataframe(periods=30))
+            # FIX 1: Use max(0, ...) to prevent negative predictions
+            predicted_outflow = max(0.0, float(future_demand.tail(30)['yhat'].sum()))
+        else:
+            predicted_outflow = 0.0
 
         # --- STEP 3: CALCULATE PROJECTED BALANCE ---
         # Current Stock + Predicted Inflow - Predicted Outflow
-
-        # FIX: Ensure Current Stock (from get_current_warehouse_stock()) is treated as a float
-        # for the final calculation, though the helper function should handle this.
-        # It is safest to cast current_stock_kg here as well.
         projected_balance = (float(current_stock_kg) + predicted_inflow) - predicted_outflow
 
         # --- STEP 4: DECISION LOGIC ---
-        safety_buffer = 150  # Always keep at least 150kg on hand
-
+        # FIX 2: Raise Safety Buffer to 2,000kg (approx 40 sacks).
+        # 150kg is too small for a factory; 2000kg makes "1633kg" validly CRITICAL.
+        safety_buffer = 2000
 
         # SCENARIO A: We have a healthy surplus
         if projected_balance >= safety_buffer:
@@ -167,26 +170,27 @@ def suggest_orders_smart():
             }
 
         # SCENARIO B: We are running low (CRITICAL)
-        true_deficit = (safety_buffer - projected_balance)  # How much we need to buy to hit the buffer
+        true_deficit = (safety_buffer - projected_balance)
 
-        # Get Top Ranked Suppliers (based on the score calculated in scoring_engine.py)
+        # Get Top Ranked Suppliers
         top_suppliers = pd.read_sql("""
-            SELECT supplier_id, name, ai_reliability_score, farm_profile 
-            FROM supplier_profiles 
-            ORDER BY ai_reliability_score DESC LIMIT 3
+            SELECT name, reliability_score 
+            FROM suppliers 
+            ORDER BY reliability_score DESC LIMIT 3
         """, engine).to_dict(orient="records")
 
         # Distribute the order amount
         suggested_orders = []
-        order_per_supplier = true_deficit / len(top_suppliers)
-
-        for s in top_suppliers:
-            suggested_orders.append({
-                "supplier": s['name'],
-                "rank_score": s['ai_reliability_score'],
-                "suggested_order_kg": int(order_per_supplier),
-                "reason": "Top performer selected to mitigate projected stock shortage."
-            })
+        # Ensure we don't divide by zero if no suppliers found
+        if top_suppliers:
+            order_per_supplier = true_deficit / len(top_suppliers)
+            for s in top_suppliers:
+                suggested_orders.append({
+                    "supplier": s['name'],
+                    "rank_score": s['reliability_score'],
+                    "suggested_order_kg": int(order_per_supplier),
+                    "reason": "Top performer selected to mitigate projected stock shortage."
+                })
 
         return {
             "status": "CRITICAL_ORDERING_REQUIRED",
@@ -197,26 +201,25 @@ def suggest_orders_smart():
                 "required_purchase_kg": int(true_deficit)
             },
             "ai_suggestion": suggested_orders
+
         }
 
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
-
-
 def get_current_warehouse_stock():
     """
-    Calculates Real-Time Stock, ENSURING result is a standard FLOAT.
+    Calculates Real-Time Stock by summing inputs and outputs separately.
     """
+    # We use two separate subqueries to avoid multiplying the rows
     sql_query = """
-    SELECT
-        (COALESCE(SUM(T.amount), 0) - COALESCE(SUM(P.quantity), 0)) AS current_stock_kg
-    FROM transactions T
-    FULL JOIN production_logs P ON 1=1;
-    """
+        SELECT 
+            (SELECT COALESCE(SUM(amount), 0) FROM transactions) - 
+            (SELECT COALESCE(SUM(quantity), 0) FROM production_logs) 
+        as current_stock_kg
+        """
     with engine.connect() as conn:
         result = conn.execute(text(sql_query))
         current_stock = result.scalar() or 0.0
 
-    # FIX: Explicitly convert the high-precision Decimal to a standard float
     return float(max(0, current_stock))
