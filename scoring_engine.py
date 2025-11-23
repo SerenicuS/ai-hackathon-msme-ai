@@ -5,7 +5,7 @@ from datetime import datetime
 
 # 1. CONNECT TO DATABASE
 # Ask your friend for the 'postgres' password
-db_str = 'postgresql://neondb_owner:npg_aj5kWuP9LoCe@ep-calm-thunder-a1tgpch5-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+db_str = 'postgresql://neondb_owner:npg_VhvNzRaM3xi8@ep-young-fire-a1mrxhwn-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 engine = create_engine(db_str)
 
 
@@ -18,12 +18,13 @@ def calculate_scores():
         SELECT 
             t.supplier_id,
             t.date,
-            t.net_weight_kg,
-            t.quality_audit,       
-            s.farm_profile,        
-            s.compliance_status    
-        FROM transactions t
-        JOIN supplier_profiles s ON t.supplier_id = s.supplier_id
+            t.amount,
+            t.quality,
+            s.reliability_score,       
+            s.description,        
+            s.eligibility    
+        FROM transactions t 
+        JOIN suppliers s ON t.supplier_id = s.supplier_id
         """
         df = pd.read_sql(query, engine)
 
@@ -44,11 +45,11 @@ def calculate_scores():
             seasonality_score = max(0, 100 - (days_since * 2))
 
             # B. VOLUME
-            farm_data = group['farm_profile'].iloc[0]
+            farm_data = group['description'].iloc[0]
             if isinstance(farm_data, str): farm_data = json.loads(farm_data)
             bearing_trees = farm_data.get('bearing_trees', 100)
 
-            total_delivered = group['net_weight_kg'].sum()
+            total_delivered = group['amount'].sum()
             expected_yield = bearing_trees * 2.0
             if expected_yield == 0: expected_yield = 1
 
@@ -56,7 +57,7 @@ def calculate_scores():
 
             # C. QUALITY
             quality_scores = []
-            for audit in group['quality_audit']:
+            for audit in group['quality']:
                 if isinstance(audit, str): audit = json.loads(audit)
                 q_score = 100
                 cut_test = audit.get('cut_test_results', {})
@@ -69,7 +70,7 @@ def calculate_scores():
             avg_quality_score = sum(quality_scores) / len(quality_scores) if quality_scores else 0
 
             # D. PHILGAP
-            compliance = group['compliance_status'].iloc[0]
+            compliance = group['eligibility'].iloc[0]
             if isinstance(compliance, str): compliance = json.loads(compliance)
             philgap_score = 100 if compliance.get('philgap_certified') else 0
 
@@ -95,8 +96,8 @@ def calculate_scores():
         with engine.begin() as conn:
             for item in supplier_scores:
                 update_query = text("""
-                    UPDATE supplier_profiles 
-                    SET ai_reliability_score = :score 
+                    UPDATE suppliers 
+                    SET reliability_score = :score 
                     WHERE supplier_id = :id
                 """)
                 conn.execute(update_query, {"score": item['score'], "id": item['supplier_id']})
