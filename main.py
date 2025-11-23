@@ -127,7 +127,7 @@ def suggest_orders_smart():
         # --- STEP 2: PREDICT FUTURE FLOW (Separate models for I/O) ---
 
         # 2a. Supply Forecast (What the farmers will deliver)
-        df_supply = pd.read_sql("SELECT date as ds, net_weight_kg as y FROM transactions", engine)
+        df_supply = pd.read_sql("SELECT date as ds, amount as y FROM transactions", engine)
         m_supply = Prophet().fit(df_supply)
         future_supply = m_supply.predict(m_supply.make_future_dataframe(periods=30))
 
@@ -135,7 +135,7 @@ def suggest_orders_smart():
         predicted_inflow = float(future_supply.tail(30)['yhat'].sum())
 
         # 2b. Demand Forecast (What the factory will use)
-        df_demand = pd.read_sql("SELECT date as ds, kilos_processed as y FROM production_logs", engine)
+        df_demand = pd.read_sql("SELECT date as ds, quantity as y FROM production_logs", engine)
         m_demand = Prophet().fit(df_demand)
         future_demand = m_demand.predict(m_demand.make_future_dataframe(periods=30))
 
@@ -210,7 +210,7 @@ def get_current_warehouse_stock():
     """
     sql_query = """
     SELECT
-        (COALESCE(SUM(T.net_weight_kg), 0) - COALESCE(SUM(P.kilos_processed), 0)) AS current_stock_kg
+        (COALESCE(SUM(T.amount), 0) - COALESCE(SUM(P.quantity), 0)) AS current_stock_kg
     FROM transactions T
     FULL JOIN production_logs P ON 1=1;
     """
