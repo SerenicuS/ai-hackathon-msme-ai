@@ -6,9 +6,12 @@ from prophet import Prophet
 import scoring_engine  # This imports the file you just made!
 from sqlalchemy import text  # Make sure this is imported at the top
 from dotenv import load_dotenv
+import uvicorn
 
 # Load environment variables from .env file
 load_dotenv()
+
+# To run : uvicorn main:app --reload
 
 app = FastAPI()
 
