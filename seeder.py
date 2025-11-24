@@ -1,11 +1,18 @@
+import os
+
 import pandas as pd
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 import random
 from datetime import datetime, timedelta
 import json
+import psycopg2
 
 # CONNECT TO DATABASE
-db_str = 'postgresql://neondb_owner:npg_VhvNzRaM3xi8@ep-young-fire-a1mrxhwn-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+load_dotenv();
+db_str = os.getenv('DATABASE_URL')
+if not db_str:
+    raise ValueError("DATABASE_URL environment variable is not set")
 engine = create_engine(db_str)
 
 

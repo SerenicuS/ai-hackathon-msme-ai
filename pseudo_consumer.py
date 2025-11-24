@@ -1,6 +1,8 @@
 import time
 import uuid
 from datetime import datetime
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 import os
 import sys
@@ -8,10 +10,13 @@ import sys
 # ==========================================
 # 1. CONFIGURATION (Direct to Cloud)
 # ==========================================
-DB_STR = 'postgresql://neondb_owner:npg_VhvNzRaM3xi8@ep-young-fire-a1mrxhwn-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+load_dotenv();
 
 try:
-    engine = create_engine(DB_STR)
+    db_str = os.getenv('DATABASE_URL')
+    if not db_str:
+        raise ValueError("DATABASE_URL environment variable is not set")
+    engine = create_engine(db_str)
     print("✅ Connected to Cloud Database successfully.")
 except Exception as e:
     print(f"❌ Connection Failed: {e}")

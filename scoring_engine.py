@@ -1,13 +1,19 @@
+import os
+
 import pandas as pd
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 import json
 from datetime import datetime
 
 # 1. CONNECT TO DATABASE
 # Ask your friend for the 'postgres' password
-db_str = 'postgresql://neondb_owner:npg_VhvNzRaM3xi8@ep-young-fire-a1mrxhwn-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
-engine = create_engine(db_str)
+load_dotenv();
 
+db_str = os.getenv('DATABASE_URL')
+if not db_str:
+    raise ValueError("DATABASE_URL environment variable is not set")
+engine = create_engine(db_str)
 
 def calculate_scores():
     try:
