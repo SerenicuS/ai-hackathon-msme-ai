@@ -1,0 +1,23 @@
+{
+  "name": "cacao-msme-api",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "seed": "bun run src/utils/seeder.ts",
+    "consumer": "bun run src/scripts/consumer.ts"
+  },
+  "dependencies": {
+    "@elysiajs/openapi": "^1.4.14",
+    "@prisma/client": "^5.22.0",
+    "elysia": "latest",
+    "simple-statistics": "^7.8.3"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "prisma": "^5.22.0"
+  }
+}
