@@ -1,0 +1,51 @@
+// Prisma Schema for Cacao MSME Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Supplier {
+  supplier_id       String          @id @db.VarChar(50)
+  name              String          @db.VarChar(255)
+  location          Json
+  eligibility       Json?
+  description       Json?
+  reliability_score Int             @default(0)
+  transactions      Transaction[]
+  productionLogs    ProductionLog[] @relation("SupplierProductionLogs")
+
+  @@map("suppliers")
+}
+
+model Transaction {
+  transaction_id String   @id @db.VarChar(50)
+  supplier_id    String   @db.VarChar(50)
+  amount         Int
+  price          Decimal  @db.Decimal(10, 2)
+  date           DateTime @default(now()) @db.Timestamp(6)
+  quality        Json?
+  status         String   @db.VarChar(50)
+  supplier       Supplier @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+
+  @@index([supplier_id], map: "idx_transactions_supplier")
+  @@index([date], map: "idx_transactions_date")
+  @@map("transactions")
+}
+
+model ProductionLog {
+  log_id       String   @id @db.VarChar(50)
+  date         DateTime @default(now()) @db.Timestamp(6)
+  product_type String   @db.VarChar(100)
+  quantity     Int
+  supplier_id  String   @db.VarChar(50)
+  supplier     Supplier @relation("SupplierProductionLogs", fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+
+  @@index([supplier_id], map: "idx_production_logs_supplier")
+  @@index([date], map: "idx_production_logs_date")
+  @@map("production_logs")
+}
