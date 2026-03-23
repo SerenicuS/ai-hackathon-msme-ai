@@ -4,6 +4,15 @@
 2. post /update-scores - updating the score of suppliers and rank them
 
 
-Install these - pip install fastapi uvicorn pandas sqlalchemy psycopg2-binary prophet
+Install these:
 
-then run the main.py using > uvicorn warehouse_app:app --reload
+```bash
+pip install fastapi uvicorn pandas sqlalchemy psycopg2-binary prophet
+```
+
+<br />
+
+then run the main.py using:
+```bash
+uvicorn warehouse_app:app --reload
+```
